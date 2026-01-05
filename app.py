@@ -584,7 +584,7 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
 
             with gr.Column(scale=1):
                 initial_image_value = "./assets/examples/init_states/honkai_star_rail_showui.png"  # default image path
-                image_preview = gr.Image(value=initial_image_value, label="Reference Initial State", height=260-(318.75-280))
+                image_preview = gr.Image(value=initial_image_value, label="Reference Initial State", height=int(260-(318.75-280)))
                 hintbox = gr.Markdown("Task Hint: Selected options will appear here.")
 
         # Textbox for displaying the mapped value
@@ -599,7 +599,7 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
         with gr.Column(scale=1, min_width=50):
             submit_button = gr.Button(value="Send", variant="primary")
 
-    chatbot = gr.Chatbot(label="Chatbot History", type="tuples", autoscroll=True, height=580, group_consecutive_messages=False)
+    chatbot = gr.Chatbot(label="Chatbot History", autoscroll=True, height=580, group_consecutive_messages=False)
     
     planner_model.change(fn=update_planner_model, inputs=[planner_model, state], outputs=[planner_api_provider, planner_api_key, actor_model])
     planner_api_provider.change(fn=update_api_key_placeholder, inputs=[planner_api_provider, planner_model], outputs=planner_api_key)
