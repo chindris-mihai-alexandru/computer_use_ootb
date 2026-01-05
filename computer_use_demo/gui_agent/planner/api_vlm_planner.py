@@ -8,23 +8,35 @@ from typing import Any, cast, Dict, Callable
 
 from anthropic import Anthropic, AnthropicBedrock, AnthropicVertex, APIResponse
 from anthropic.types import TextBlock, ToolResultBlockParam
-from anthropic.types.beta import BetaMessage, BetaTextBlock, BetaToolUseBlock, BetaMessageParam
+from anthropic.types.beta import (
+    BetaMessage,
+    BetaTextBlock,
+    BetaToolUseBlock,
+    BetaMessageParam,
+)
 
 from computer_use_demo.tools.screen_capture import get_screenshot
-from computer_use_demo.gui_agent.llm_utils.oai import run_oai_interleaved, run_ssh_llm_interleaved
+from computer_use_demo.gui_agent.llm_utils.oai import (
+    run_oai_interleaved,
+    run_ssh_llm_interleaved,
+)
 from computer_use_demo.gui_agent.llm_utils.qwen import run_qwen
+from computer_use_demo.gui_agent.llm_utils.gemini import run_gemini_interleaved
 from computer_use_demo.gui_agent.llm_utils.llm_utils import extract_data, encode_image
-from computer_use_demo.tools.colorful_text import colorful_text_showui, colorful_text_vlm
+from computer_use_demo.tools.colorful_text import (
+    colorful_text_showui,
+    colorful_text_vlm,
+)
 
 
 class APIVLMPlanner:
     def __init__(
         self,
-        model: str, 
-        provider: str, 
-        system_prompt_suffix: str, 
+        model: str,
+        provider: str,
+        system_prompt_suffix: str,
         api_key: str,
-        output_callback: Callable, 
+        output_callback: Callable,
         api_response_callback: Callable,
         max_tokens: int = 4096,
         only_n_most_recent_images: int | None = None,
@@ -43,9 +55,12 @@ class APIVLMPlanner:
             self.model = "Qwen2-VL-7B-Instruct"
         elif model == "qwen2.5-vl-7b (ssh)":
             self.model = "Qwen2.5-VL-7B-Instruct"
+        # Gemini models (free tier with vision support)
+        elif model.startswith("gemini-"):
+            self.model = model
         else:
             raise ValueError(f"Model {model} not supported")
-        
+
         self.provider = provider
         self.system_prompt_suffix = system_prompt_suffix
         self.api_key = api_key
@@ -56,40 +71,43 @@ class APIVLMPlanner:
         self.output_callback = output_callback
         self.system_prompt = self._get_system_prompt() + self.system_prompt_suffix
 
-
         self.print_usage = print_usage
         self.total_token_usage = 0
         self.total_cost = 0
 
-           
     def __call__(self, messages: list):
-        
         # drop looping actions msg, byte image etc
-        planner_messages = _message_filter_callback(messages)  
+        planner_messages = _message_filter_callback(messages)
         print(f"filtered_messages: {planner_messages}")
 
         if self.only_n_most_recent_images:
-            _maybe_filter_to_n_most_recent_images(planner_messages, self.only_n_most_recent_images)
+            _maybe_filter_to_n_most_recent_images(
+                planner_messages, self.only_n_most_recent_images
+            )
 
         # Take a screenshot
-        screenshot, screenshot_path = get_screenshot(selected_screen=self.selected_screen)
+        screenshot, screenshot_path = get_screenshot(
+            selected_screen=self.selected_screen
+        )
         screenshot_path = str(screenshot_path)
         image_base64 = encode_image(screenshot_path)
-        self.output_callback(f'Screenshot for {colorful_text_vlm}:\n<img src="data:image/png;base64,{image_base64}">',
-                             sender="bot")
-        
+        self.output_callback(
+            f'Screenshot for {colorful_text_vlm}:\n<img src="data:image/png;base64,{image_base64}">',
+            sender="bot",
+        )
+
         # if isinstance(planner_messages[-1], dict):
         #     if not isinstance(planner_messages[-1]["content"], list):
         #         planner_messages[-1]["content"] = [planner_messages[-1]["content"]]
         #     planner_messages[-1]["content"].append(screenshot_path)
         # elif isinstance(planner_messages[-1], str):
         #     planner_messages[-1] = {"role": "user", "content": [{"type": "text", "text": planner_messages[-1]}]}
-        
+
         # append screenshot
         # planner_messages.append({"role": "user", "content": [{"type": "image", "image": screenshot_path}]})
-        
+
         planner_messages.append(screenshot_path)
-        
+
         print(f"Sending messages to VLMPlanner: {planner_messages}")
 
         if self.model == "gpt-4o-2024-11-20":
@@ -103,8 +121,10 @@ class APIVLMPlanner:
             )
             print(f"oai token usage: {token_usage}")
             self.total_token_usage += token_usage
-            self.total_cost += (token_usage * 0.15 / 1000000)  # https://openai.com/api/pricing/
-            
+            self.total_cost += (
+                token_usage * 0.15 / 1000000
+            )  # https://openai.com/api/pricing/
+
         elif self.model == "qwen2-vl-max":
             vlm_response, token_usage = run_qwen(
                 messages=planner_messages,
@@ -116,15 +136,19 @@ class APIVLMPlanner:
             )
             print(f"qwen token usage: {token_usage}")
             self.total_token_usage += token_usage
-            self.total_cost += (token_usage * 0.02 / 7.25 / 1000)  # 1USD=7.25CNY, https://help.aliyun.com/zh/dashscope/developer-reference/tongyi-qianwen-vl-plus-api
+            self.total_cost += (
+                token_usage * 0.02 / 7.25 / 1000
+            )  # 1USD=7.25CNY, https://help.aliyun.com/zh/dashscope/developer-reference/tongyi-qianwen-vl-plus-api
         elif "Qwen" in self.model:
             # 从api_key中解析host和port
             try:
                 ssh_host, ssh_port = self.api_key.split(":")
                 ssh_port = int(ssh_port)
             except ValueError:
-                raise ValueError("Invalid SSH connection string. Expected format: host:port")
-                
+                raise ValueError(
+                    "Invalid SSH connection string. Expected format: host:port"
+                )
+
             vlm_response, token_usage = run_ssh_llm_interleaved(
                 messages=planner_messages,
                 system=self.system_prompt,
@@ -133,32 +157,45 @@ class APIVLMPlanner:
                 ssh_port=ssh_port,
                 max_tokens=self.max_tokens,
             )
+        elif self.model.startswith("gemini-"):
+            vlm_response, token_usage = run_gemini_interleaved(
+                messages=planner_messages,
+                system=self.system_prompt,
+                llm=self.model,
+                api_key=self.api_key,
+                max_tokens=self.max_tokens,
+                temperature=0,
+            )
+            print(f"gemini token usage: {token_usage}")
+            self.total_token_usage += token_usage
+            # Gemini is free tier, no cost
+            self.total_cost += 0
         else:
             raise ValueError(f"Model {self.model} not supported")
-            
+
         print(f"VLMPlanner response: {vlm_response}")
-        
+
         if self.print_usage:
-            print(f"VLMPlanner total token usage so far: {self.total_token_usage}. Total cost so far: $USD{self.total_cost:.5f}")
-        
+            print(
+                f"VLMPlanner total token usage so far: {self.total_token_usage}. Total cost so far: $USD{self.total_cost:.5f}"
+            )
+
         vlm_response_json = extract_data(vlm_response, "json")
 
         # vlm_plan_str = '\n'.join([f'{key}: {value}' for key, value in json.loads(response).items()])
         vlm_plan_str = ""
         for key, value in json.loads(vlm_response_json).items():
             if key == "Thinking":
-                vlm_plan_str += f'{value}'
+                vlm_plan_str += f"{value}"
             else:
-                vlm_plan_str += f'\n{key}: {value}'
-        
-        self.output_callback(f"{colorful_text_vlm}:\n{vlm_plan_str}", sender="bot")
-        
-        return vlm_response_json
+                vlm_plan_str += f"\n{key}: {value}"
 
+        self.output_callback(f"{colorful_text_vlm}:\n{vlm_plan_str}", sender="bot")
+
+        return vlm_response_json
 
     def _api_response_callback(self, response: APIResponse):
         self.api_response_callback(response)
-        
 
     def reformat_messages(self, messages: list):
         pass
@@ -205,9 +242,8 @@ IMPORTANT NOTES:
 3. Attach the text to Next Action, if there is text or any description for the button. 
 4. You should not include other actions, such as keyboard shortcuts.
 5. When the task is completed, you should say "Next Action": "None" in the json field.
-""" 
+"""
 
-    
 
 def _maybe_filter_to_n_most_recent_images(
     messages: list[BetaMessageParam],
@@ -262,7 +298,7 @@ def _message_filter_callback(messages):
     filtered_list = []
     try:
         for msg in messages:
-            if msg.get('role') in ['user']:
+            if msg.get("role") in ["user"]:
                 if not isinstance(msg["content"], list):
                     msg["content"] = [msg["content"]]
                 if isinstance(msg["content"][0], TextBlock):
@@ -271,7 +307,7 @@ def _message_filter_callback(messages):
                     filtered_list.append(msg["content"][0])  # User message
                 else:
                     print("[_message_filter_callback]: drop message", msg)
-                    continue                
+                    continue
 
             # elif msg.get('role') in ['assistant']:
             #     if isinstance(msg["content"][0], TextBlock):
@@ -286,12 +322,12 @@ def _message_filter_callback(messages):
             #         print("[_message_filter_callback]: drop message", msg)
             #         continue
             #     filtered_list.append(msg["content"][0])  # User message
-                
+
             else:
                 print("[_message_filter_callback]: drop message", msg)
                 continue
-            
+
     except Exception as e:
         print("[_message_filter_callback]: error", e)
-                
+
     return filtered_list

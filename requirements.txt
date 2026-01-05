@@ -22,3 +22,4 @@ accelerate
 dashscope
 huggingface_hub
 openai
+google-genai>=1.0.0  # For Gemini API support
