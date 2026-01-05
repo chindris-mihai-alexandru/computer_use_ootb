@@ -2,7 +2,7 @@
 Groq API integration for Computer Use OOTB.
 Groq provides an OpenAI-compatible API, making integration straightforward.
 
-Groq free tier limits (as of Jan 2026):
+Groq free tier limits (see https://console.groq.com/docs/rate-limits for current limits):
 - Llama 3.3 70B: 1,000 requests/day, 12,000 tokens/minute
 - Llama 3.1 8B: 14,400 requests/day, 6,000 tokens/minute
 - Llama 4 Scout: 1,000 requests/day, 30,000 tokens/minute
