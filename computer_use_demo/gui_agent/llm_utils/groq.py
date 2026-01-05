@@ -6,15 +6,15 @@ Groq free tier limits (as of Jan 2026):
 - Llama 3.3 70B: 1,000 requests/day, 12,000 tokens/minute
 - Llama 3.1 8B: 14,400 requests/day, 6,000 tokens/minute
 - Llama 4 Scout: 1,000 requests/day, 30,000 tokens/minute
+- Qwen3 32B: 1,000 requests/day, 6,000 tokens/minute
 
 Note: Groq models are text-only (no vision support).
 For GUI automation, use Groq as planner with ShowUI as actor.
 """
 
 import os
-import logging
 import requests
-from computer_use_demo.gui_agent.llm_utils.llm_utils import is_image_path, encode_image
+from computer_use_demo.gui_agent.llm_utils.llm_utils import is_image_path
 
 
 # Groq API base URL (OpenAI-compatible)

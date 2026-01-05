@@ -300,6 +300,7 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
                         "llama-3.3-70b (Groq)",
                         "llama-3.1-8b (Groq)",
                         "llama-4-scout (Groq)",
+                        "qwen3-32b (Groq)",
                     ],
                     value="gpt-4o",
                     interactive=True,
@@ -510,7 +511,7 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
             raise ValueError(f"Model {model_selection} not supported")
 
         # Update the provider in state
-        state["planner_api_provider"] = provider_value
+        state["planner_provider"] = provider_value
 
         # Update api_key in state based on the provider
         if provider_value == "openai":
@@ -546,7 +547,7 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
         )
 
         logger.info(
-            f"Updated state: model={state['planner_model']}, provider={state['planner_api_provider']}, api_key={state['api_key']}"
+            f"Updated state: model={state['planner_model']}, provider={state['planner_provider']}, api_key={state['api_key']}"
         )
         return provider_update, api_key_update, actor_model_update
 
@@ -652,7 +653,7 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
                 image_preview = gr.Image(
                     value=initial_image_value,
                     label="Reference Initial State",
-                    height=260 - (318.75 - 280),
+                    height=221,  # Simplified from int(260 - (318.75 - 280))
                 )
                 hintbox = gr.Markdown("Task Hint: Selected options will appear here.")
 
