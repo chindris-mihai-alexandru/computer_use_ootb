@@ -2,7 +2,7 @@
 Google Gemini API integration for Computer Use OOTB.
 Uses the new google-genai SDK (NOT deprecated google.generativeai).
 
-Gemini free tier limits (as of Jan 2026):
+Gemini free tier limits (see https://ai.google.dev/pricing for current limits):
 - Gemini 2.5 Flash: 500 requests/day, 10 requests/min
 - Gemini 2.0 Flash: 1,500 requests/day, 15 requests/min
 - Gemini 2.0 Flash Lite: 1,500 requests/day, 30 requests/min
@@ -17,6 +17,28 @@ Get your free API key at: https://aistudio.google.com/apikey
 import os
 import base64
 from computer_use_demo.gui_agent.llm_utils.llm_utils import is_image_path, encode_image
+
+
+def get_mime_type(file_path: str) -> str:
+    """
+    Get MIME type from file path extension.
+
+    Args:
+        file_path: Path to the image file
+
+    Returns:
+        MIME type string (defaults to "image/png" for unknown extensions)
+    """
+    _, ext = os.path.splitext(file_path)
+    ext = ext.lower().lstrip(".")
+    return {
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "png": "image/png",
+        "gif": "image/gif",
+        "webp": "image/webp",
+    }.get(ext, "image/png")
+
 
 # Gemini model mappings
 GEMINI_MODELS = {
@@ -86,15 +108,7 @@ def run_gemini_interleaved(
                         if is_image_path(cnt):
                             # Encode image as base64
                             image_base64 = encode_image(cnt)
-                            # Determine mime type from extension
-                            ext = cnt.lower().split(".")[-1]
-                            mime_type = {
-                                "jpg": "image/jpeg",
-                                "jpeg": "image/jpeg",
-                                "png": "image/png",
-                                "gif": "image/gif",
-                                "webp": "image/webp",
-                            }.get(ext, "image/png")
+                            mime_type = get_mime_type(cnt)
 
                             parts.append(
                                 types.Part.from_bytes(
@@ -113,14 +127,7 @@ def run_gemini_interleaved(
                 if is_image_path(item):
                     # Encode image as base64
                     image_base64 = encode_image(item)
-                    ext = item.lower().split(".")[-1]
-                    mime_type = {
-                        "jpg": "image/jpeg",
-                        "jpeg": "image/jpeg",
-                        "png": "image/png",
-                        "gif": "image/gif",
-                        "webp": "image/webp",
-                    }.get(ext, "image/png")
+                    mime_type = get_mime_type(item)
 
                     parts.append(
                         types.Part.from_bytes(
@@ -163,7 +170,13 @@ def run_gemini_interleaved(
         return text, token_usage
 
     except Exception as e:
-        print(f"[gemini] Error in Gemini API call: {e}")
+        error_type = type(e).__name__
+        print(
+            f"[gemini] Error during API call: "
+            f"model={model_id}, contents_count={len(contents)}, "
+            f"max_tokens={max_tokens}, temperature={temperature}, "
+            f"error={error_type}: {e}"
+        )
         raise
 
 

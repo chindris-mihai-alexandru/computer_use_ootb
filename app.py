@@ -517,7 +517,7 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
             raise ValueError(f"Model {model_selection} not supported")
 
         # Update the provider in state
-        state["planner_api_provider"] = provider_value
+        state["planner_provider"] = provider_value
 
         # Update api_key in state based on the provider
         if provider_value == "openai":
@@ -659,7 +659,7 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
                 image_preview = gr.Image(
                     value=initial_image_value,
                     label="Reference Initial State",
-                    height=260 - (318.75 - 280),
+                    height=221,
                 )
                 hintbox = gr.Markdown("Task Hint: Selected options will appear here.")
 
